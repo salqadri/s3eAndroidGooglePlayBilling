@@ -1,0 +1,23 @@
+#!/usr/bin/env mkb
+# Builder mkb file for the s3eAndroidGooglePlayBilling extension on android
+platform LINUX
+
+buildtype (SCONS, X86)
+
+define
+{
+    S3E_ANDROID
+    S3E_ANDROID_X86
+}
+
+options
+{
+    dll
+    x86
+    android-x86
+    output-name="lib/android/x86/libs3eAndroidGooglePlayBilling.so"
+    output-name-debug="lib/android/x86/libs3eAndroidGooglePlayBilling_d.so"
+}
+define S3E_BUILD_EXT
+
+subproject s3eAndroidGooglePlayBilling_build
