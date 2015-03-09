@@ -219,52 +219,54 @@ public class IabHelper {
             public void onServiceConnected(ComponentName name, IBinder service) {
                 logDebug("Billing service connected.");
                 mService = IInAppBillingService.Stub.asInterface(service);
-                String packageName = mContext.getPackageName();
-                try {
-                    logDebug("Checking for in-app billing 3 support.");
-                    
-                    // check for in-app billing v3 support
-                    int response = mService.isBillingSupported(3, packageName, ITEM_TYPE_INAPP);
-                    if (response != BILLING_RESPONSE_RESULT_OK) {
-                        if (listener != null) listener.onIabSetupFinished(new IabResult(response,
-                                "Error checking for billing v3 support."));
+                if (mService != null) {
+                    String packageName = mContext.getPackageName();
+                    try {
+                        logDebug("Checking for in-app billing 3 support.");
                         
-                        // if in-app purchases aren't supported, neither are subscriptions.
-                        mSubscriptionsSupported = false;
+                        // check for in-app billing v3 support
+                        int response = mService.isBillingSupported(3, packageName, ITEM_TYPE_INAPP);
+                        if (response != BILLING_RESPONSE_RESULT_OK) {
+                            if (listener != null) listener.onIabSetupFinished(new IabResult(response,
+                                    "Error checking for billing v3 support."));
+                            
+                            // if in-app purchases aren't supported, neither are subscriptions.
+                            mSubscriptionsSupported = false;
+                            return;
+                        }
+                        logDebug("In-app billing version 3 supported for " + packageName);
+                        
+                        // check for v3 subscriptions support
+                        response = mService.isBillingSupported(3, packageName, ITEM_TYPE_SUBS);
+                        if (response == BILLING_RESPONSE_RESULT_OK) {
+                            logDebug("Subscriptions AVAILABLE.");
+                            mSubscriptionsSupported = true;
+                        }
+                        else {
+                            logDebug("Subscriptions NOT AVAILABLE. Response: " + response);
+                        }
+                        
+                        mSetupDone = true;
+                    }
+                    catch (RemoteException e) {
+                        if (listener != null) {
+                            listener.onIabSetupFinished(new IabResult(IABHELPER_REMOTE_EXCEPTION,
+                                                        "RemoteException while setting up in-app billing."));
+                        }
+                        e.printStackTrace();
                         return;
                     }
-                    logDebug("In-app billing version 3 supported for " + packageName);
-                    
-                    // check for v3 subscriptions support
-                    response = mService.isBillingSupported(3, packageName, ITEM_TYPE_SUBS);
-                    if (response == BILLING_RESPONSE_RESULT_OK) {
-                        logDebug("Subscriptions AVAILABLE.");
-                        mSubscriptionsSupported = true;
-                    }
-                    else {
-                        logDebug("Subscriptions NOT AVAILABLE. Response: " + response);
-                    }
-                    
-                    mSetupDone = true;
-                }
-                catch (RemoteException e) {
-                    if (listener != null) {
-                        listener.onIabSetupFinished(new IabResult(IABHELPER_REMOTE_EXCEPTION,
-                                                    "RemoteException while setting up in-app billing."));
-                    }
-                    e.printStackTrace();
-                    return;
-                }
 
-                if (listener != null) {
-                    listener.onIabSetupFinished(new IabResult(BILLING_RESPONSE_RESULT_OK, "Setup successful."));
+                    if (listener != null) {
+                        listener.onIabSetupFinished(new IabResult(BILLING_RESPONSE_RESULT_OK, "Setup successful."));
+                    }
                 }
             }
         };
         
         Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
         serviceIntent.setPackage("com.android.vending");
-        if (!mContext.getPackageManager().queryIntentServices(serviceIntent, 0).isEmpty()) {
+        if (mContext != null && mContext.getPackageManager() != null && !mContext.getPackageManager().queryIntentServices(serviceIntent, 0).isEmpty()) {
             // service available to handle that Intent
             mContext.bindService(serviceIntent, mServiceConn, Context.BIND_AUTO_CREATE);
         }
